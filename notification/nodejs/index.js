@@ -71,7 +71,7 @@ async function send_v2ex() {
 			cache['interval']['v2ex'] = Math.min(cache['interval']['v2ex'] * 2, 64);
 			return;
 		}
-		cache['interval']['v2ex'] = Math.max(cache['interval']['v2ex']/2, 2);
+		cache['interval']['v2ex'] = 2
 
 		// 写入cache['received']
 		cache['msg'] = cache['msg'].concat(newReplies.map(reply => reply.link));
@@ -122,7 +122,7 @@ async function send_disqus() {
 			cache['interval']['disqus'] = Math.min(cache['interval']['disqus'] * 2, 64);
 			return;
 		}
-		cache['interval']['disqus'] = Math.max(cache['interval']['disqus']/2, 2);
+		cache['interval']['disqus'] = 2
 
 		// 写入cache
 		cache['msg'] = cache['msg'].concat(newReplies.map(reply => reply.link));
