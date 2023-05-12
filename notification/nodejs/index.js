@@ -19,7 +19,9 @@ let cache = {};
 if (fs.existsSync('./.cache.json')) {
 	cache = JSON.parse(fs.readFileSync('./.cache.json'));
 }
-cache['msg_telegram'] = cache['msg_telegram'] || [];
+cache['msg'] = cache['msg'] || [];
+cache['interval'] = cache['interval'] || {};
+
 
 // 对于 message == "addme", 将chat_id加入到cache.telegram_chat_id
 bot.on('message', (msg) => {
@@ -63,11 +65,16 @@ async function send_v2ex() {
 
 		// 滤去已经发送过的: 即, link在cache['received']数组中的
 		const newReplies = replies.filter(reply => {
-			return !cache['msg_telegram'].includes(reply.link);
+			return !cache['msg'].includes(reply.link);
 		});
+		if(newReplies.length == 0) {
+			cache['interval']['v2ex'] = Math.min(cache['interval']['v2ex'] * 2, 64);
+			return;
+		}
+		cache['interval']['v2ex'] = Math.max(cache['interval']['v2ex']/2, 2);
 
 		// 写入cache['received']
-		cache['msg_telegram'] = cache['msg_telegram'].concat(newReplies.map(reply => reply.link));
+		cache['msg'] = cache['msg'].concat(newReplies.map(reply => reply.link));
 		fs.writeFileSync('./.cache.json', JSON.stringify(cache));
 
 		// 将newReplies组装为语料, 发送到telegram
@@ -77,16 +84,78 @@ async function send_v2ex() {
 			return `${reply.author} ${new Date(reply.date).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}\n${reply.link}\n${reply.content}`;
 		}).join('\n\n--------------------------------\n\n');
 		
-		if(text) {
-			for (let chat_id of cache['telegram_chat_id']) {
-				bot.sendMessage(chat_id, text);
-			}
+		for (let chat_id of cache['telegram_chat_id']) {
+			bot.sendMessage(chat_id, text);
 		}
 	})
 }
 
-cron.schedule('* */5 * * * *', () => {
-	send_v2ex();
+async function send_disqus() {
+	let url=`https://disqus.com/api/3.0/posts/list.json?related=thread&api_key=${secret.disqus_apikey}&forum=gkxk&limit=5&order=asc`;
+	axios.get(url)
+	.then(function (response) {
+		// handle success
+		const data = response.data;
+		const posts = data.response;
+		let replies = [];
+		posts.forEach(post => {
+			const title = post.thread.title;
+			const link = post.url;
+			const date = post.createdAt;
+			const author = post.author.name;
+			let content = post.raw_message;
+
+			replies.push({
+				title,
+				link,
+				date,
+				author,
+				content
+			});
+		});
+
+		// 滤去已经发送过的: 即, link在cache['received']数组中的
+		const newReplies = replies.filter(reply => {
+			return !cache['msg'].includes(reply.link);
+		});
+		if(newReplies.length == 0) {
+			cache['interval']['disqus'] = Math.min(cache['interval']['disqus'] * 2, 64);
+			return;
+		}
+		cache['interval']['disqus'] = Math.max(cache['interval']['disqus']/2, 2);
+
+		// 写入cache
+		cache['msg'] = cache['msg'].concat(newReplies.map(reply => reply.link));
+		fs.writeFileSync('./.cache.json', JSON.stringify(cache));
+
+		// 将newReplies组装为语料, 发送到telegram
+		const text = newReplies.map(reply => {
+			// 时间转化为东八区时间
+			return `${reply.author} ${new Date(reply.date).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}\n${reply.link}\n${reply.content}`;
+		}).join('\n\n--------------------------------\n\n');
+
+		for (let chat_id of cache['telegram_chat_id']) {
+			bot.sendMessage(chat_id, text);
+		}
+	})
+}
+
+
+cache['interval']['v2ex'] = cache['interval']['v2ex'] || 2;
+cache['interval']['disqus'] = cache['interval']['disqus'] || 32;
+let timer_i = 0
+cron.schedule('* */1 * * * *', () => {
+	for(let key in cache['interval']) {
+		if(timer_i % cache['interval'][key] == 0) {
+			if(key == 'v2ex') {
+				send_v2ex();
+			}
+			if(key == 'disqus') {
+				send_disqus();
+			}
+		}
+	}
+	timer_i=(timer_i+1)%Math.pow(2,32);
 });
 
 
