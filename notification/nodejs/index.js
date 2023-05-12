@@ -6,6 +6,7 @@ app.use(express.json())
 
 const get_v2ex_text = require('./source/v2ex').get_text;
 const get_disqus_text = require('./source/disqus').get_text;
+const get_bilibili_text = require('./source/bilibili').get_text;
 
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
@@ -16,19 +17,7 @@ const secret = require('./.secret');
 const token = secret.telegram_token;
 const bot = new TelegramBot(token, {polling: true});
 
-
-// 对于 message == "addme", 将chat_id加入到cache.telegram_chat_id
-bot.on('message', (msg) => {
-	if (msg.text == 'addme') {
-		cache['telegram_chat_id'].push(msg.chat.id);
-		cache['telegram_chat_id'] = [...new Set(cache['telegram_chat_id'])];
-		fs.writeFileSync('./.cache.json', JSON.stringify(cache));
-		bot.sendMessage(msg.chat.id, '已添加');
-	}
-});
-
-
-let source_list=['v2ex','disqus','bilibili','github','zhihu','twitter']
+let source_list=['v2ex','disqus', 'bilibili']
 let timer_i = 0
 cron.schedule('* */1 * * * *', async () => {
 	source_list.forEach(async (source) => {
@@ -38,7 +27,9 @@ cron.schedule('* */1 * * * *', async () => {
 			let text = ''
 			if(source == 'v2ex') text = await get_v2ex_text();
 			else if(source == 'disqus') text = await get_disqus_text();
+			else if(source == 'bilibili') text = await get_bilibili_text();
 
+			console.log(`${source}: ${text}`)
 			if(!text)
 				return
 
@@ -49,6 +40,7 @@ cron.schedule('* */1 * * * *', async () => {
 		}
 	})
 	timer_i=(timer_i+1)%Math.pow(2,32);
+	console.log(timer_i)
 });
 
 

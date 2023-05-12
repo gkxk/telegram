@@ -32,10 +32,7 @@ async function get_text() {
 				content
 			});
 		});
-		let cache = {};
-		if (fs.existsSync('./.cache.json')) {
-			cache = JSON.parse(fs.readFileSync('./.cache.json'));
-		}
+		let cache = JSON.parse(fs.readFileSync('./.cache.json'));
 
 		// 滤去已经发送过的: 即, link在cache['received']数组中的
 		const newReplies = replies.filter(reply => {
@@ -43,6 +40,7 @@ async function get_text() {
 		});
 		if(newReplies.length == 0) {
 			cache['interval']['v2ex'] = Math.min(cache['interval']['v2ex'] * 2, 64);
+			fs.writeFileSync('./.cache.json', JSON.stringify(cache));
 			return;
 		}
 		cache['interval']['v2ex'] = 2

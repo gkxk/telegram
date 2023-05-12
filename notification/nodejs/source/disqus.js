@@ -43,7 +43,7 @@ async function get_text() {
 			cache['msg'] = cache['msg'].concat(newReplies.map(reply => reply.link));
 			fs.writeFileSync('./.cache.json', JSON.stringify(cache));
 
-			// 将newReplies组装为语料, 发送到telegram
+			// 将newReplies组装为语料
 			const text = newReplies.map(reply => {
 				// 时间转化为东八区时间
 				return `${reply.author} ${new Date(reply.date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n${reply.link}\n${reply.content}`;
