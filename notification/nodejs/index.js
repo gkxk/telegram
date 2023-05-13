@@ -4,7 +4,6 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.json())
 
-const get_v2ex_text = require('./source/v2ex').get_text;
 const get_disqus_text = require('./source/disqus').get_text;
 const get_bilibili_text = require('./source/bilibili').get_text;
 
@@ -17,16 +16,15 @@ const secret = require('./.secret');
 const token = secret.telegram_token;
 const bot = new TelegramBot(token, {polling: true});
 
-let source_list=['v2ex','disqus', 'bilibili']
+let source_list=['disqus', 'bilibili']
 let timer_i = 0
-cron.schedule('* */1 * * * *', async () => {
+cron.schedule('0 */1 * * * *', async () => {
 	source_list.forEach(async (source) => {
 		let cache = JSON.parse(fs.readFileSync('./.cache.json'));
 		cache['interval'][source] = cache['interval'][source] || 2;
 		if(timer_i % cache['interval'][source] == 0) {
 			let text = ''
-			if(source == 'v2ex') text = await get_v2ex_text();
-			else if(source == 'disqus') text = await get_disqus_text();
+			if(source == 'disqus') text = await get_disqus_text();
 			else if(source == 'bilibili') text = await get_bilibili_text();
 
 			console.log(`${source}: ${text}`)
