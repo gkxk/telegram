@@ -14,21 +14,21 @@ const fs = require('fs');
 
 const secret = require('./.secret');
 const token = secret.telegram_token;
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token, { polling: true });
 
-let source_list=['disqus', 'bilibili']
+let source_list = ['disqus', 'bilibili']
 let timer_i = 0
 cron.schedule('0 */1 * * * *', async () => {
 	source_list.forEach(async (source) => {
 		let cache = JSON.parse(fs.readFileSync('./.cache.json'));
 		cache['interval'][source] = cache['interval'][source] || 2;
-		if(timer_i % cache['interval'][source] == 0) {
+		if (timer_i % cache['interval'][source] == 0) {
 			let text = ''
-			if(source == 'disqus') text = await get_disqus_text();
-			else if(source == 'bilibili') text = await get_bilibili_text();
+			if (source == 'disqus') text = await get_disqus_text();
+			else if (source == 'bilibili') text = await get_bilibili_text();
 
 			console.log(`${source}: ${text}`)
-			if(!text)
+			if (!text)
 				return
 
 			// 发送到telegram
@@ -37,18 +37,19 @@ cron.schedule('0 */1 * * * *', async () => {
 			}
 		}
 	})
-	timer_i=(timer_i+1)%Math.pow(2,32);
+	timer_i = (timer_i + 1) % Math.pow(2, 32);
 	console.log(timer_i)
 });
 
 
 app.post("/", (req, res, next) => {
-  let { content } = req.body;
-  if(content)
-	for (let chat_id of cache['telegram_chat_id']) {
-		bot.sendMessage(chat_id, content);
-	}
-  res.send("ok");
+	let { content } = req.body;
+	let cache = JSON.parse(fs.readFileSync('./.cache.json'));
+	if (content)
+		for (let chat_id of cache['telegram_chat_id']) {
+			bot.sendMessage(chat_id, content);
+		}
+	res.send("ok");
 })
 
-app.listen(3000, () => {console.log("服务启动成功");})
+app.listen(3000, () => { console.log("服务启动成功"); })
